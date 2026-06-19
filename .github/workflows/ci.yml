@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Cross-platform build + tests (SC-002, SC-003): no OpenShift cluster required.
+  build-test:
+    name: build-test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore OpenSharp.slnx
+      - name: Build
+        run: dotnet build OpenSharp.slnx -c Release --no-restore
+      - name: Unit tests
+        run: dotnet test tests/OpenSharp.Core.UnitTests -c Release --no-build
+      - name: System tests (live excluded)
+        run: dotnet test tests/OpenSharp.SystemTests -c Release --no-build --filter "Category!=live"
+
+  # Coverage gate (Constitution IV): OpenSharp.Core must stay >= 80% line coverage.
+  coverage:
+    name: coverage-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run tests with coverage
+        run: |
+          dotnet test OpenSharp.slnx -c Release \
+            --settings coverlet.runsettings \
+            --filter "Category!=live"
+      - name: Install ReportGenerator
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+      - name: Merge coverage and enforce 80% gate
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          reports=$(find . -name 'coverage.cobertura.xml' | paste -sd';')
+          reportgenerator -reports:"$reports" -targetdir:coverage-report -reporttypes:"TextSummary;Html"
+          line=$(grep -m1 'Line coverage:' coverage-report/Summary.txt | grep -oE '[0-9.]+')
+          echo "OpenSharp.Core line coverage: ${line}%"
+          awk -v c="$line" 'BEGIN { if (c+0 < 80) { print "FAIL: coverage " c "% is below the 80% gate"; exit 1 } else { print "PASS: coverage " c "% meets the 80% gate" } }'
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report

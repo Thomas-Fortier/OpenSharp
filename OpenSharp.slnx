@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OpenSharp.Core/OpenSharp.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OpenSharp.Core.UnitTests/OpenSharp.Core.UnitTests.csproj" />
+    <Project Path="tests/OpenSharp.SystemTests/OpenSharp.SystemTests.csproj" />
+  </Folder>
+</Solution>
