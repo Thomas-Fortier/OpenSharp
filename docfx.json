@@ -15,11 +15,15 @@
   ],
   "build": {
     "content": [
-      { "files": [ "docs/api/**.yml", "docs/api/index.md" ] },
-      { "files": [ "README.md" ] }
+      {
+        "files": [ "**/*.{md,yml}" ],
+        "src": "docs",
+        "dest": "."
+      }
     ],
     "dest": "docs/_site",
     "globalMetadata": {
+      "_appName": "OpenSharp",
       "_appTitle": "OpenSharp.Core API Reference",
       "_enableSearch": true
     },

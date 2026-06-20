@@ -16,6 +16,9 @@ artifacts/
 .vs/
 *.csproj.user
 
+# Reqnroll / SpecFlow generated code-behind (regenerated from .feature files on build)
+*.feature.cs
+
 # Test results & coverage
 [Tt]est[Rr]esults/
 coverage-report/
