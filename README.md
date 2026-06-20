@@ -37,12 +37,14 @@ await foreach (var pod in client.Pods.EnumerateAsync("my-project"))
 | Area | API | Notes |
 |------|-----|-------|
 | Read | `Projects`, `Pods`, `Deployments`, `Services`, … | `GetAsync` / `ListAsync` / `EnumerateAsync` (auto-pages) |
-| Lifecycle | `CreateAsync` / `ReplaceAsync` / `PatchAsync` / `DeleteAsync` | Delete honours `Background` / `Foreground` / `Orphan` propagation |
+| Lifecycle | `CreateAsync` / `ReplaceAsync` / `PatchAsync` / `DeleteAsync` | Delete honours `Background` / `Foreground` / `Orphan` propagation, plus grace period / force via `DeleteOptions` |
 | OpenShift | `Routes`, `DeploymentConfigs`, `Projects` | Clear typed error on a plain-Kubernetes target |
 | Logs & exec | `Pods.ReadLogsAsync` / `FollowLogsAsync` / `ExecAsync` | Streaming log follow via `IAsyncEnumerable` |
 | Scale & rollout | `Deployments.ScaleAsync` / `RolloutRestartAsync` | Works for Deployments and DeploymentConfigs |
 | Watch | `…​.WatchAsync` | Added/Modified/Deleted, auto-resume after transient drops |
-| Generic | `Generic.GetAsync` / `ListAsync` / `CreateAsync` / `DeleteAsync` | Reach any resource by group/version/plural |
+| Nodes | `Nodes.ListAsync` / `GetAsync` / `CordonAsync` / `UncordonAsync` | Inspect cluster nodes and toggle schedulability |
+| Cluster | `Cluster.GetInfoAsync` / `IsResourceTypeAvailableAsync` | API endpoint + server version; capability discovery |
+| Generic | `Generic.GetAsync` / `ListAsync` / `PatchAsync` / `CreateAsync` / `DeleteAsync` | Reach any resource by group/version/plural; label-selector filtering, patch, and force-delete; reaches the core API group |
 
 ## Authentication
 

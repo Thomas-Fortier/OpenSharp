@@ -578,6 +578,145 @@ public sealed class OpenShiftApiSimulator : IDisposable
         metadata = new { name, @namespace, resourceVersion = "1" },
     };
 
+    // ─── Feature 002 shared helpers (selectors, patch, delete capture) ───────
+
+    /// <summary>
+    /// Stubs a namespaced custom-object list that returns <paramref name="matching"/> when the
+    /// request carries <c>labelSelector=<paramref name="labelSelector"/></c>, and
+    /// <paramref name="all"/> otherwise. Pass <paramref name="namespace"/> = <see langword="null"/>
+    /// for the all-namespaces (cluster) collection path.
+    /// </summary>
+    public void StubGenericListFiltered(string group, string version, string? @namespace, string plural,
+        string labelSelector, IEnumerable<object> matching, IEnumerable<object> all)
+    {
+        var path = @namespace is null
+            ? $"/apis/{group}/{version}/{plural}"
+            : $"/apis/{group}/{version}/namespaces/{@namespace}/{plural}";
+
+        string Body(IEnumerable<object> items) => JsonSerializer.Serialize(new
+        {
+            apiVersion = $"{group}/{version}",
+            kind = "List",
+            metadata = new { resourceVersion = "100" },
+            items,
+        });
+
+        // Filtered match registered after the base so it takes precedence for the selector query.
+        Json(Request.Create().WithPath(path).UsingGet(), 200, Body(all));
+        Json(Request.Create().WithPath(path).WithParam("labelSelector", labelSelector).UsingGet(), 200, Body(matching));
+    }
+
+    /// <summary>Stubs PATCH on a namespaced custom-object item, echoing <paramref name="patched"/>.</summary>
+    public void StubGenericPatch(string group, string version, string @namespace, string plural, string name, object patched)
+    {
+        Json(Request.Create()
+            .WithPath($"/apis/{group}/{version}/namespaces/{@namespace}/{plural}/{name}")
+            .UsingPatch(), 200, JsonSerializer.Serialize(patched));
+    }
+
+    /// <summary>Stubs PATCH on a namespaced custom-object item to return HTTP 422 (validation failure).</summary>
+    public void StubGenericPatchInvalid(string group, string version, string @namespace, string plural, string name)
+    {
+        Json(Request.Create()
+            .WithPath($"/apis/{group}/{version}/namespaces/{@namespace}/{plural}/{name}")
+            .UsingPatch(), 422, JsonSerializer.Serialize(new
+            {
+                kind = "Status", apiVersion = "v1", status = "Failure",
+                message = "invalid patch", reason = "Invalid", code = 422,
+            }));
+    }
+
+    /// <summary>Number of received requests whose method and path match (for asserting a call occurred).</summary>
+    public int CountRequests(string method, string pathContains) =>
+        _server.LogEntries.Count(e =>
+            e.RequestMessage is { } rm &&
+            string.Equals(rm.Method, method, StringComparison.OrdinalIgnoreCase) &&
+            (rm.Path?.Contains(pathContains, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    // ─── Nodes & core-group (US2) ────────────────────────────────────────────
+
+    /// <summary>Stubs GET /api/v1/nodes returning a NodeList of <paramref name="nodes"/>.</summary>
+    public void StubNodeList(IEnumerable<object> nodes)
+    {
+        Json(Request.Create().WithPath("/api/v1/nodes").UsingGet(), 200, JsonSerializer.Serialize(new
+        {
+            apiVersion = "v1",
+            kind = "NodeList",
+            metadata = new { resourceVersion = "100" },
+            items = nodes,
+        }));
+    }
+
+    /// <summary>Stubs the node watch endpoint (GET /api/v1/nodes?watch=true) with a stream of events.</summary>
+    public void StubWatchNodes(IEnumerable<(string Type, string Name)> events)
+    {
+        var body = string.Join("\n", events.Select(e =>
+            JsonSerializer.Serialize(new { type = e.Type, @object = MakeNode(e.Name) }))) + "\n";
+        Json(Request.Create().WithPath("/api/v1/nodes").WithParam("watch", "true").UsingGet(), 200, body);
+    }
+
+    /// <summary>Stubs GET /api/v1/nodes/{name}.</summary>
+    public void StubGetNode(string name, object node) =>
+        Json(Request.Create().WithPath($"/api/v1/nodes/{name}").UsingGet(), 200, JsonSerializer.Serialize(node));
+
+    /// <summary>Stubs PATCH /api/v1/nodes/{name}, echoing <paramref name="node"/>.</summary>
+    public void StubPatchNode(string name, object node) =>
+        Json(Request.Create().WithPath($"/api/v1/nodes/{name}").UsingPatch(), 200, JsonSerializer.Serialize(node));
+
+    /// <summary>Stubs GET for a namespaced core (legacy group) resource at /api/v1/namespaces/{ns}/{plural}/{name}.</summary>
+    public void StubCoreNamespacedGet(string plural, string @namespace, string name, object body) =>
+        Json(Request.Create().WithPath($"/api/v1/namespaces/{@namespace}/{plural}/{name}").UsingGet(),
+            200, JsonSerializer.Serialize(body));
+
+    /// <summary>Builds a minimal core Node JSON object.</summary>
+    public static object MakeNode(string name, bool unschedulable = false) => new
+    {
+        apiVersion = "v1",
+        kind = "Node",
+        metadata = new { name, resourceVersion = "1", uid = Guid.NewGuid().ToString() },
+        spec = new { unschedulable },
+        status = new
+        {
+            conditions = new[] { new { type = "Ready", status = "True", reason = "KubeletReady" } },
+            nodeInfo = new { kubeletVersion = "v1.28.3" },
+        },
+    };
+
+    /// <summary>Builds a minimal core-group object for generic-reach stubs.</summary>
+    public static object MakeCoreObject(string kind, string name, string? @namespace = null) => new
+    {
+        apiVersion = "v1",
+        kind,
+        metadata = new { name, @namespace, resourceVersion = "1" },
+    };
+
+    // ─── Cluster info & discovery (US3) ──────────────────────────────────────
+
+    /// <summary>Stubs GET /version (with or without a trailing slash) returning the cluster's reported version.</summary>
+    public void StubVersion(string gitVersion) =>
+        Json(Request.Create().WithPath(new WireMock.Matchers.WildcardMatcher("/version*")).UsingGet(), 200,
+            JsonSerializer.Serialize(new
+            {
+                major = "1", minor = "28", gitVersion, gitCommit = "deadbeef", platform = "linux/amd64",
+            }));
+
+    /// <summary>Stubs GET /apis/{group}/{version} discovery to advertise the given resource plurals.</summary>
+    public void StubApiResources(string group, string version, IEnumerable<string> plurals) =>
+        Json(Request.Create().WithPath($"/apis/{group}/{version}").UsingGet(), 200, JsonSerializer.Serialize(new
+        {
+            kind = "APIResourceList",
+            apiVersion = "v1",
+            groupVersion = $"{group}/{version}",
+            resources = plurals.Select(p => new { name = p, singularName = "", namespaced = true, kind = "X", verbs = new[] { "get", "list" } }),
+        }));
+
+    /// <summary>Stubs GET /apis/{group}/{version} discovery to return HTTP 404 (group not served).</summary>
+    public void StubApiGroupNotFound(string group, string version) =>
+        Json(Request.Create().WithPath($"/apis/{group}/{version}").UsingGet(), 404, JsonSerializer.Serialize(new
+        {
+            kind = "Status", apiVersion = "v1", status = "Failure", message = "not found", reason = "NotFound", code = 404,
+        }));
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     /// <summary>Builds a minimal project JSON object for use in stubs.</summary>

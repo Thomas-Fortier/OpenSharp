@@ -69,13 +69,13 @@ internal sealed class SecretOperations : WriteOperationsBase<Secret>, ISecretOpe
         return Map(result);
     }
 
-    public override Task DeleteAsync(string name, string? @namespace = null,
-        DeletePropagationPolicy propagation = DeletePropagationPolicy.Background, CancellationToken ct = default)
+    public override Task DeleteAsync(string name, string? @namespace, DeleteOptions options, CancellationToken ct = default)
     {
         var ns = ResolveNamespace(@namespace);
         return ExecuteAsync(
             () => K8s.CoreV1.DeleteNamespacedSecretAsync(name, ns,
-                propagationPolicy: ToK8sPropagation(propagation), cancellationToken: ct),
+                gracePeriodSeconds: EffectiveGracePeriod(options),
+                propagationPolicy: ToK8sPropagation(options.Propagation), cancellationToken: ct),
             name);
     }
 

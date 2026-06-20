@@ -31,6 +31,12 @@ public interface IOpenShiftClient
     /// <summary>Operations on Kubernetes <c>Secret</c> resources.</summary>
     ISecretOperations Secrets { get; }
 
+    /// <summary>Operations on cluster <c>Node</c> resources, including cordon/uncordon.</summary>
+    INodeOperations Nodes { get; }
+
+    /// <summary>Cluster-level operations: connection information and capability discovery.</summary>
+    IClusterOperations Cluster { get; }
+
     /// <summary>
     /// Generic escape hatch for resource types not yet first-class in the library.
     /// Accepts any API group/version/plural.

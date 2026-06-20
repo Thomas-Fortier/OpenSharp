@@ -76,13 +76,13 @@ internal sealed class RouteOperations : WriteOperationsBase<Route>, IRouteOperat
         return MapFromJson(result);
     }
 
-    public override Task DeleteAsync(string name, string? @namespace = null,
-        DeletePropagationPolicy propagation = DeletePropagationPolicy.Background, CancellationToken ct = default)
+    public override Task DeleteAsync(string name, string? @namespace, DeleteOptions options, CancellationToken ct = default)
     {
         var ns = ResolveNamespace(@namespace);
         return ExecuteRouteAsync(
             () => K8s.CustomObjects.DeleteNamespacedCustomObjectAsync(Group, Version, ns, Plural, name,
-                propagationPolicy: ToK8sPropagation(propagation), cancellationToken: ct),
+                gracePeriodSeconds: EffectiveGracePeriod(options),
+                propagationPolicy: ToK8sPropagation(options.Propagation), cancellationToken: ct),
             name);
     }
 

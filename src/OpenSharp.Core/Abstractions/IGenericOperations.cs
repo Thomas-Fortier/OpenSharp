@@ -1,5 +1,6 @@
 using System.Text.Json;
 using OpenSharp.Core.Generic;
+using OpenSharp.Core.Resources;
 
 namespace OpenSharp.Core.Abstractions;
 
@@ -22,11 +23,15 @@ public interface IGenericOperations
     /// <param name="reference">Resource type identity (name need not be set).</param>
     /// <param name="limit">Maximum items per page.</param>
     /// <param name="continueToken">Continuation token from the previous page, or <see langword="null"/> for the first page.</param>
+    /// <param name="labelSelector">Optional label selector; filtered server-side for named API groups.</param>
+    /// <param name="fieldSelector">Optional field selector; filtered server-side for named API groups.</param>
     /// <param name="ct">Cancellation token.</param>
     Task<PagedList<JsonElement>> ListAsync(
         GenericResourceRef reference,
         int? limit = null,
         string? continueToken = null,
+        string? labelSelector = null,
+        string? fieldSelector = null,
         CancellationToken ct = default);
 
     /// <summary>Creates a resource described by <paramref name="body"/>.</summary>
@@ -35,8 +40,23 @@ public interface IGenericOperations
     /// <param name="ct">Cancellation token.</param>
     Task<JsonElement> CreateAsync(GenericResourceRef reference, JsonElement body, CancellationToken ct = default);
 
+    /// <summary>Applies a patch to the resource identified by <paramref name="reference"/>.</summary>
+    /// <param name="reference">Full resource identity including name.</param>
+    /// <param name="patch">The patch document.</param>
+    /// <param name="type">The patch strategy to use. Defaults to <see cref="PatchType.Merge"/>.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<JsonElement> PatchAsync(
+        GenericResourceRef reference, JsonDocument patch,
+        PatchType type = PatchType.Merge, CancellationToken ct = default);
+
     /// <summary>Deletes the resource identified by <paramref name="reference"/>.</summary>
     /// <param name="reference">Full resource identity including name.</param>
     /// <param name="ct">Cancellation token.</param>
     Task DeleteAsync(GenericResourceRef reference, CancellationToken ct = default);
+
+    /// <summary>Deletes the resource identified by <paramref name="reference"/> using full <see cref="DeleteOptions"/>.</summary>
+    /// <param name="reference">Full resource identity including name.</param>
+    /// <param name="options">Delete behaviour: propagation, grace period, and force.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task DeleteAsync(GenericResourceRef reference, DeleteOptions options, CancellationToken ct = default);
 }

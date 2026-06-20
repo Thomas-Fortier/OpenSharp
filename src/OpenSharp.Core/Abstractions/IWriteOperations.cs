@@ -1,4 +1,5 @@
 using System.Text.Json;
+using OpenSharp.Core.Resources;
 
 namespace OpenSharp.Core.Abstractions;
 
@@ -66,4 +67,15 @@ public interface IWriteOperations<T>
         string? @namespace = null,
         DeletePropagationPolicy propagation = DeletePropagationPolicy.Background,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a resource using full <see cref="DeleteOptions"/> — propagation policy plus an
+    /// optional grace period and force flag (e.g. immediate deletion via
+    /// <see cref="DeleteOptions.Force"/>).
+    /// </summary>
+    /// <param name="name">Resource name.</param>
+    /// <param name="namespace">Project or namespace.</param>
+    /// <param name="options">Delete behaviour: propagation, grace period, and force.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task DeleteAsync(string name, string? @namespace, DeleteOptions options, CancellationToken ct = default);
 }

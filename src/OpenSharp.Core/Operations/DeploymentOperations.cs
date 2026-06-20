@@ -117,22 +117,22 @@ internal sealed class DeploymentOperations : WriteOperationsBase<Deployment>, IW
         return MapDeployment(dep);
     }
 
-    public override async Task DeleteAsync(string name, string? @namespace = null,
-        DeletePropagationPolicy propagation = DeletePropagationPolicy.Background, CancellationToken ct = default)
+    public override async Task DeleteAsync(string name, string? @namespace, DeleteOptions options, CancellationToken ct = default)
     {
         var ns = ResolveNamespace(@namespace);
-        var prop = ToK8sPropagation(propagation);
+        var prop = ToK8sPropagation(options.Propagation);
+        var grace = EffectiveGracePeriod(options);
         if (_isDc)
         {
             await ExecuteAsync(
                 () => K8s.CustomObjects.DeleteNamespacedCustomObjectAsync(DcGroup, DcVersion, ns, DcPlural, name,
-                    propagationPolicy: prop, cancellationToken: ct),
+                    gracePeriodSeconds: grace, propagationPolicy: prop, cancellationToken: ct),
                 name).ConfigureAwait(false);
             return;
         }
         await ExecuteAsync(
             () => K8s.AppsV1.DeleteNamespacedDeploymentAsync(name, ns,
-                propagationPolicy: prop, cancellationToken: ct),
+                gracePeriodSeconds: grace, propagationPolicy: prop, cancellationToken: ct),
             name).ConfigureAwait(false);
     }
 

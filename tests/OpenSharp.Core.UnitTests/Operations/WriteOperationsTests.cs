@@ -8,6 +8,7 @@ using OpenSharp.Core.Abstractions;
 using OpenSharp.Core.Authentication;
 using OpenSharp.Core.Errors;
 using OpenSharp.Core.Operations;
+using OpenSharp.Core.Resources;
 
 namespace OpenSharp.Core.UnitTests.Operations;
 
@@ -47,8 +48,7 @@ public sealed class WriteOperationsTests
         public override Task<Record> PatchAsync(string name, string? @namespace, System.Text.Json.JsonDocument patch, CancellationToken ct = default) =>
             Task.FromResult(new Record(name));
 
-        public override Task DeleteAsync(string name, string? @namespace = null,
-            DeletePropagationPolicy propagation = DeletePropagationPolicy.Background, CancellationToken ct = default) =>
+        public override Task DeleteAsync(string name, string? @namespace, DeleteOptions options, CancellationToken ct = default) =>
             Task.CompletedTask;
 
         protected override async IAsyncEnumerable<WatchEvent<Record>> WatchCoreAsync(

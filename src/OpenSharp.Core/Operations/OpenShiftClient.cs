@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using OpenSharp.Core.Abstractions;
 using OpenSharp.Core.Authentication;
 using OpenSharp.Core.Generic;
+using INodeOperations = OpenSharp.Core.Abstractions.INodeOperations;
 
 namespace OpenSharp.Core.Operations;
 
@@ -37,6 +38,8 @@ public sealed class OpenShiftClient : IOpenShiftClient, IDisposable
         Routes = new RouteOperations(_k8s, _options, logger);
         ConfigMaps = new ConfigMapOperations(_k8s, _options, logger);
         Secrets = new SecretOperations(_k8s, _options, logger);
+        Nodes = new NodeOperations(_k8s, _options, logger);
+        Cluster = new ClusterOperations(_k8s, _options, logger);
         Generic = new GenericOperations(_k8s, _options, logger);
     }
 
@@ -63,6 +66,12 @@ public sealed class OpenShiftClient : IOpenShiftClient, IDisposable
 
     /// <inheritdoc/>
     public ISecretOperations Secrets { get; }
+
+    /// <inheritdoc/>
+    public INodeOperations Nodes { get; }
+
+    /// <inheritdoc/>
+    public IClusterOperations Cluster { get; }
 
     /// <inheritdoc/>
     public IGenericOperations Generic { get; }

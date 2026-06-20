@@ -68,11 +68,11 @@ internal sealed class ProjectOperations : WriteOperationsBase<Project>, IProject
         return MapFromJson(result);
     }
 
-    public override Task DeleteAsync(string name, string? @namespace = null,
-        DeletePropagationPolicy propagation = DeletePropagationPolicy.Background, CancellationToken ct = default) =>
+    public override Task DeleteAsync(string name, string? @namespace, DeleteOptions options, CancellationToken ct = default) =>
         ExecuteAsync(
             () => K8s.CustomObjects.DeleteClusterCustomObjectAsync(Group, Version, Plural, name,
-                propagationPolicy: ToK8sPropagation(propagation), cancellationToken: ct),
+                gracePeriodSeconds: EffectiveGracePeriod(options),
+                propagationPolicy: ToK8sPropagation(options.Propagation), cancellationToken: ct),
             name);
 
     protected override IAsyncEnumerable<WatchEvent<Project>> WatchCoreAsync(
